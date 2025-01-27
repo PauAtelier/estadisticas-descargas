@@ -14,7 +14,10 @@ const ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN; // Obtén el token desde 
 
 // Middleware para permitir que Shopify cargue en iframe
 app.use((req, res, next) => {
-  res.setHeader("Content-Security-Policy", "frame-ancestors https://admin.shopify.com https://*.myshopify.com");
+  res.setHeader(
+    "Content-Security-Policy",
+    "frame-ancestors https://admin.shopify.com https://*.myshopify.com"
+  );
   res.setHeader("Access-Control-Allow-Origin", "*");
   next();
 });
@@ -22,7 +25,6 @@ app.use((req, res, next) => {
 // Ruta principal: Página con las estadísticas
 app.get("/estadisticas", async (req, res) => {
   try {
-    // Obtener los productos y sus descargas
     const products = await getAllProducts();
     const productData = [];
 
@@ -45,7 +47,6 @@ app.get("/estadisticas", async (req, res) => {
       }
     }
 
-    // Renderizar los datos en formato HTML (tabla)
     const tableRows = productData
       .map(
         (product) =>
@@ -105,6 +106,49 @@ app.get("/estadisticas", async (req, res) => {
     res.status(500).send("Error generando estadísticas.");
   }
 });
+
+// Nueva ruta para obtener productos por página
+app.get("/productos", async (req, res) => {
+  const page = parseInt(req.query.page || "1"); // Página actual, por defecto es 1
+  const limit = 50; // Shopify permite un máximo de 50 productos por página
+
+  try {
+    if (page < 1 || page > 3) {
+      return res.status(400).send("Página no válida. Solo hay páginas del 1 al 3.");
+    }
+
+    const products = await getProductsPage(page, limit); // Obtener productos de la página solicitada
+    res.json({ page, products }); // Enviar productos en formato JSON
+  } catch (error) {
+    console.error("Error al obtener productos:", error.message);
+    res.status(500).send("Error al obtener productos.");
+  }
+});
+
+// Función para obtener productos de una página específica
+async function getProductsPage(page, limit) {
+  const endpoint = `${SHOPIFY_STORE}/admin/api/${API_VERSION}/products.json?limit=${limit}&page=${page}`;
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": ACCESS_TOKEN,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error en la solicitud: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.products || [];
+  } catch (error) {
+    console.error("Error obteniendo productos por página:", error.message);
+    throw error;
+  }
+}
 
 // Función para obtener productos con paginación
 async function getAllProducts() {
