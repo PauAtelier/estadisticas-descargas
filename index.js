@@ -170,6 +170,10 @@ async function getProductMetafields(productId) {
   }
 }
 
+app.get("/", (req, res) => {
+  res.redirect("/estadisticas");
+});
+
 // Iniciar el servidor
 app.listen(PORT, () => {
   console.log(`Servidor ejecutándose en http://localhost:${PORT}`);
